@@ -10,6 +10,7 @@ public class Asteroid : MonoBehaviour, IDamagable
 
     [SerializeField] Transform spriteTransform;
     [SerializeField] float rotationSpeed;
+    public float RotationSpeed => rotationSpeed;
     [SerializeField] Vector2 minMaxMoveSpeed;
 
     [Header("Health Pack")]
@@ -35,8 +36,6 @@ public class Asteroid : MonoBehaviour, IDamagable
 
     void Update()
     {
-        spriteTransform.rotation *= Quaternion.Euler(0, 0, rotationSpeed * rotationDirection * Time.deltaTime);
-
         lifeTimer += Time.deltaTime * moveSpeed;
         if (lifeTimer > lifeTime)
         {

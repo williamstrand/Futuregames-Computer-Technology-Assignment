@@ -21,14 +21,6 @@ public class AsteroidSpawner : MonoBehaviour
 
     float spawnTimer;
 
-    public struct AsteroidInfo
-    {
-        public float3 Position;
-        public float3 MoveDirection;
-        public float MoveSpeed;
-        public float DeltaTime;
-    }
-
     void Update()
     {
         UpdateAsteroidPosition();
@@ -59,52 +51,62 @@ public class AsteroidSpawner : MonoBehaviour
 
     void UpdateAsteroidPosition()
     {
-        var input = new NativeArray<AsteroidInfo>(1000, Allocator.Persistent);
-        var output = new NativeArray<AsteroidInfo>(1000, Allocator.Persistent);
+        if (spawnedAsteroids.Count <= 0) return;
+
+        var positionArray = new NativeArray<float3>(spawnedAsteroids.Count, Allocator.TempJob);
+        var moveDirectionArray = new NativeArray<float3>(spawnedAsteroids.Count, Allocator.TempJob);
+        var moveSpeedArray = new NativeArray<float>(spawnedAsteroids.Count, Allocator.TempJob);
+        var rotationArray = new NativeArray<float>(spawnedAsteroids.Count, Allocator.TempJob);
 
         for (int i = 0; i < spawnedAsteroids.Count; i++)
         {
-            input[i] = new AsteroidInfo
-            {
-                Position = spawnedAsteroids[i].transform.localPosition,
-                MoveSpeed = spawnedAsteroids[i].MoveSpeed,
-                MoveDirection = spawnedAsteroids[i].MoveDirection,
-                DeltaTime = Time.deltaTime
-            };
+            positionArray[i] = spawnedAsteroids[i].transform.position;
+            moveDirectionArray[i] = spawnedAsteroids[i].MoveDirection;
+            moveSpeedArray[i] = spawnedAsteroids[i].MoveSpeed;
+            rotationArray[i] = spawnedAsteroids[i].transform.rotation.eulerAngles.z;
         }
 
         var job = new AsteroidMoveJob
         {
-            Input = input,
-            Output = output
+            PositionsArray = positionArray,
+            MoveDirectionArray = moveDirectionArray,
+            MoveSpeedArray = moveSpeedArray,
+            RotationArray = rotationArray,
+            RotationSpeed = spawnedAsteroids[0].RotationSpeed,
+            DeltaTime = Time.deltaTime
         };
 
-        job.Schedule().Complete();
+        var jobHandle = job.Schedule(spawnedAsteroids.Count, 50);
+        jobHandle.Complete();
 
         for (int i = 0; i < spawnedAsteroids.Count; i++)
         {
-            spawnedAsteroids[i].transform.localPosition = output[i].Position;
+            spawnedAsteroids[i].transform.SetPositionAndRotation(positionArray[i], Quaternion.Euler(0, 0, rotationArray[i]));
         }
 
-        input.Dispose();
-        output.Dispose();
+        positionArray.Dispose();
+        moveDirectionArray.Dispose();
+        moveSpeedArray.Dispose();
+        rotationArray.Dispose();
     }
-}
 
 
-[BurstCompile(CompileSynchronously = true)]
-struct AsteroidMoveJob : IJob
-{
-    [ReadOnly] public NativeArray<AsteroidSpawner.AsteroidInfo> Input;
-    [WriteOnly] public NativeArray<AsteroidSpawner.AsteroidInfo> Output;
 
-    public void Execute()
+    [BurstCompile]
+    struct AsteroidMoveJob : IJobParallelFor
     {
-        for (int i = 0; i < Input.Length; i++)
+        public NativeArray<float3> PositionsArray;
+        public NativeArray<float3> MoveDirectionArray;
+        public NativeArray<float> MoveSpeedArray;
+        public NativeArray<float> RotationArray;
+
+        public float RotationSpeed;
+        public float DeltaTime;
+
+        public void Execute(int index)
         {
-            var output = Input[i];
-            output.Position += Input[i].MoveSpeed * Input[i].DeltaTime * Input[i].MoveDirection;
-            Output[i] = output;
+            PositionsArray[index] += MoveSpeedArray[index] * DeltaTime * MoveDirectionArray[index];
+            RotationArray[index] += RotationSpeed * DeltaTime;
         }
     }
 }
