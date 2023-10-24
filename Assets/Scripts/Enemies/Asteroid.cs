@@ -4,7 +4,7 @@ using Random = UnityEngine.Random;
 
 public class Asteroid : MonoBehaviour, IDamagable
 {
-    public Action OnDestroy;
+    public Action<Asteroid> OnDestroy;
 
     [SerializeField] new Transform transform;
 
@@ -16,8 +16,10 @@ public class Asteroid : MonoBehaviour, IDamagable
     [SerializeField] HealthPack healthPackPrefab;
     [Range(0, 1)][SerializeField] float healthPackSpawnChance;
     float moveSpeed;
+    public float MoveSpeed => moveSpeed;
 
     Vector3 moveDirection;
+    public Vector3 MoveDirection => moveDirection;
     int rotationDirection;
 
     [SerializeField] float lifeTime = 10f;
@@ -33,7 +35,6 @@ public class Asteroid : MonoBehaviour, IDamagable
 
     void Update()
     {
-        transform.localPosition += moveSpeed * Time.deltaTime * moveDirection;
         spriteTransform.rotation *= Quaternion.Euler(0, 0, rotationSpeed * rotationDirection * Time.deltaTime);
 
         lifeTimer += Time.deltaTime * moveSpeed;
@@ -65,7 +66,7 @@ public class Asteroid : MonoBehaviour, IDamagable
         {
             Instantiate(healthPackPrefab, ((Component)this).transform.position, Quaternion.identity);
         }
-        OnDestroy?.Invoke();
+        OnDestroy?.Invoke(this);
         Destroy(gameObject);
     }
 
