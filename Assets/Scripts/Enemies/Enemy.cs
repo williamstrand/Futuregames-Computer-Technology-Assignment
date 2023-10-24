@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class Enemy : MonoBehaviour, IDamagable
 {
-    public Action OnDestroy;
+    public Action<Enemy> OnDestroy;
 
     [SerializeField] new Transform transform;
     [HideInInspector] public Transform PlayerTransform;
@@ -30,6 +30,7 @@ public class Enemy : MonoBehaviour, IDamagable
     }
 
     float currentSpeed;
+    public float CurrentSpeed => currentSpeed;
 
     Vector2 targetLookDirection;
 
@@ -43,7 +44,6 @@ public class Enemy : MonoBehaviour, IDamagable
     {
         UpdateSpeed();
         UpdateRotation();
-        MoveCharacter();
         TargetLookDirection = PlayerTransform.position - transform.position;
         TargetSpeed = MaxSpeed;
         UpdateAttackTimer();
@@ -52,12 +52,6 @@ public class Enemy : MonoBehaviour, IDamagable
     void UpdateAttackTimer()
     {
         attackTimer -= Time.deltaTime;
-    }
-
-    void MoveCharacter()
-    {
-        var velocity = transform.right * currentSpeed;
-        transform.localPosition += velocity * Time.deltaTime;
     }
 
     void UpdateSpeed()
@@ -88,7 +82,7 @@ public class Enemy : MonoBehaviour, IDamagable
 
     void Destroy()
     {
-        OnDestroy?.Invoke();
+        OnDestroy?.Invoke(this);
         Destroy(gameObject);
     }
 
