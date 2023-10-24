@@ -90,8 +90,6 @@ public class AsteroidSpawner : MonoBehaviour
         rotationArray.Dispose();
     }
 
-
-
     [BurstCompile]
     struct AsteroidMoveJob : IJobParallelFor
     {
