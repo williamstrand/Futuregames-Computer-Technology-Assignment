@@ -376,7 +376,8 @@ MonoBehaviour:
   MaxSpeed: 3
   acceleration: 0.5
   rotationSpeed: 0.5
-  hp: 1
+  trail: {fileID: 6425512308594747344}
+  maxHP: 1
   projectilePrefab: {fileID: 1744289147605590670, guid: fcc5b7d00869fc9468cb7d958736caa5, type: 3}
   attackSpeed: 0.5
   shootPoint: {fileID: 5721878648050270681}

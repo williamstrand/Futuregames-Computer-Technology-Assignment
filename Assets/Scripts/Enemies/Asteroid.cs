@@ -26,7 +26,8 @@ public class Asteroid : MonoBehaviour, IDamagable
     [SerializeField] float lifeTime = 10f;
     float lifeTimer;
 
-    [SerializeField] int hp;
+    [SerializeField] int maxHp = 2;
+    int hp;
 
     void Start()
     {
@@ -45,8 +46,9 @@ public class Asteroid : MonoBehaviour, IDamagable
 
     public void Initialize(float size, Vector3 targetDirection)
     {
+        hp = maxHp;
         moveDirection = (targetDirection - transform.localPosition).normalized;
-        transform.localScale *= size;
+        transform.localScale = new Vector3(1, 1, 1) * size;
     }
 
     public void Damage(int damage)
@@ -66,7 +68,6 @@ public class Asteroid : MonoBehaviour, IDamagable
             Instantiate(healthPackPrefab, ((Component)this).transform.position, Quaternion.identity);
         }
         OnDestroy?.Invoke(this);
-        Destroy(gameObject);
     }
 
     void OnCollisionEnter2D(Collision2D other)

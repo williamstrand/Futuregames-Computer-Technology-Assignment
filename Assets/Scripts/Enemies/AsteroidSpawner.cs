@@ -16,10 +16,21 @@ public class AsteroidSpawner : MonoBehaviour
     [SerializeField] float spawnRangeFromPlayer;
     [SerializeField] Vector2 minMaxSize;
     [SerializeField] Transform player;
+    [SerializeField] int PoolSize = 100;
 
     List<Asteroid> spawnedAsteroids = new List<Asteroid>();
+    List<Asteroid> asteroidPool = new List<Asteroid>();
 
     float spawnTimer;
+
+    void Start()
+    {
+        for (int i = 0; i < PoolSize; i++)
+        {
+            var asteroid = Instantiate(asteroidPrefab, transform);
+            DisableAsteroid(asteroid);
+        }
+    }
 
     void Update()
     {
@@ -35,17 +46,36 @@ public class AsteroidSpawner : MonoBehaviour
 
     void SpawnAsteroid()
     {
+        if (asteroidPool.Count == 0) return;
+
         var spawnPosition = (Vector2)player.localPosition + Random.insideUnitCircle.normalized * spawnRangeFromPlayer;
         var size = Random.Range(minMaxSize.x, minMaxSize.y + 1);
-        var asteroid = Instantiate(asteroidPrefab, spawnPosition, Quaternion.identity, transform);
+        var asteroid = asteroidPool[0];
+        EnableAsteroid(asteroid);
+        asteroid.transform.position = spawnPosition;
         asteroid.Initialize(size, player.localPosition);
         asteroid.OnDestroy += AsteroidDestroyed;
         spawnedAsteroids.Add(asteroid);
     }
 
+    void EnableAsteroid(Asteroid asteroid)
+    {
+        asteroid.gameObject.SetActive(true);
+        asteroidPool.Remove(asteroid);
+        asteroid.gameObject.hideFlags = HideFlags.None;
+    }
+
+    void DisableAsteroid(Asteroid asteroid)
+    {
+        asteroid.gameObject.SetActive(false);
+        asteroidPool.Add(asteroid);
+        asteroid.gameObject.hideFlags = HideFlags.HideInHierarchy;
+    }
+
     void AsteroidDestroyed(Asteroid asteroid)
     {
         spawnedAsteroids.Remove(asteroid);
+        DisableAsteroid(asteroid);
         OnAsteroidDestroyed?.Invoke();
     }
 

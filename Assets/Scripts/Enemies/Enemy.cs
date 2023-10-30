@@ -12,9 +12,11 @@ public class Enemy : MonoBehaviour, IDamagable
     [SerializeField] protected float MaxSpeed;
     [SerializeField] float acceleration;
     [SerializeField] float rotationSpeed;
+    [SerializeField] TrailRenderer trail;
 
     [Header("Combat")]
-    [SerializeField] int hp;
+    [SerializeField] int maxHP;
+    int hp;
     [SerializeField] EnemyProjectile projectilePrefab;
     [SerializeField] float attackSpeed;
     [SerializeField] Transform shootPoint;
@@ -38,6 +40,12 @@ public class Enemy : MonoBehaviour, IDamagable
     {
         get => targetLookDirection;
         set => targetLookDirection = value.normalized;
+    }
+
+    public void Initialize()
+    {
+        hp = maxHP;
+        trail.Clear();
     }
 
     void Update()
@@ -83,7 +91,6 @@ public class Enemy : MonoBehaviour, IDamagable
     void Destroy()
     {
         OnDestroy?.Invoke(this);
-        Destroy(gameObject);
     }
 
     void Shoot()
@@ -93,7 +100,6 @@ public class Enemy : MonoBehaviour, IDamagable
         Instantiate(projectilePrefab, shootPoint.position, transform.rotation).gameObject.hideFlags = HideFlags.HideInHierarchy;
         attackTimer = 1 / attackSpeed;
     }
-
 
     void OnCollisionEnter2D(Collision2D other)
     {

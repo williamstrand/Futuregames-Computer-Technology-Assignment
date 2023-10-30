@@ -10,20 +10,25 @@ public class EnemySpawner : MonoBehaviour
 {
     public Action OnEnemyDestroyed;
 
-    const int MaxEnemyCount = 10;
-
     [SerializeField] Enemy enemyPrefab;
     [SerializeField] float spawnInterval;
     [SerializeField] float spawnRangeFromPlayer;
     [SerializeField] Transform player;
 
+    [SerializeField] int PoolSize = 10;
     List<Enemy> spawnedEnemies = new List<Enemy>();
+    List<Enemy> enemyPool = new List<Enemy>();
 
     float spawnTimer;
 
     void Start()
     {
         spawnTimer = spawnInterval;
+        for (int i = 0; i < PoolSize; i++)
+        {
+            var enemy = Instantiate(enemyPrefab, transform);
+            DisableEnemy(enemy);
+        }
     }
 
     void Update()
@@ -39,10 +44,13 @@ public class EnemySpawner : MonoBehaviour
 
     void SpawnEnemy()
     {
-        if (spawnedEnemies.Count >= MaxEnemyCount) return;
+        if (enemyPool.Count == 0) return;
 
         var spawnPosition = (Vector2)player.localPosition + Random.insideUnitCircle.normalized * spawnRangeFromPlayer;
-        var enemy = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity, transform);
+        var enemy = enemyPool[0];
+        EnableEnemy(enemy);
+        enemy.transform.position = spawnPosition;
+        enemy.Initialize();
         enemy.PlayerTransform = player;
         enemy.OnDestroy += EnemyDestroyed;
         spawnedEnemies.Add(enemy);
@@ -50,9 +58,27 @@ public class EnemySpawner : MonoBehaviour
 
     void EnemyDestroyed(Enemy enemy)
     {
+        enemy.OnDestroy -= EnemyDestroyed;
         spawnedEnemies.Remove(enemy);
+        DisableEnemy(enemy);
         OnEnemyDestroyed?.Invoke();
     }
+
+    void DisableEnemy(Enemy enemy)
+    {
+        enemy.gameObject.SetActive(false);
+        enemyPool.Add(enemy);
+        enemy.gameObject.hideFlags = HideFlags.HideInHierarchy;
+    }
+
+    void EnableEnemy(Enemy enemy)
+    {
+        enemy.gameObject.SetActive(true);
+        enemyPool.Remove(enemy);
+        enemy.gameObject.hideFlags = HideFlags.None;
+
+    }
+
     void UpdateEnemyPositions()
     {
         if (spawnedEnemies.Count <= 0) return;
@@ -79,7 +105,7 @@ public class EnemySpawner : MonoBehaviour
             DeltaTime = Time.deltaTime
         };
 
-        var jobHandle = job.Schedule(spawnedEnemies.Count, 50);
+        var jobHandle = job.Schedule(spawnedEnemies.Count, 100);
         jobHandle.Complete();
 
         for (int i = 0; i < spawnedEnemies.Count; i++)
