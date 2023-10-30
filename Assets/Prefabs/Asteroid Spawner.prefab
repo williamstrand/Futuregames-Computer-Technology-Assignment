@@ -49,3 +49,4 @@ MonoBehaviour:
   spawnRangeFromPlayer: 50
   minMaxSize: {x: 1, y: 5}
   player: {fileID: 0}
+  PoolSize: 200

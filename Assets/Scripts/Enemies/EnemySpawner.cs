@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -86,14 +87,15 @@ public class EnemySpawner : MonoBehaviour
         var positionArray = new NativeArray<float3>(spawnedEnemies.Count, Allocator.TempJob);
         var moveDirectionArray = new NativeArray<float3>(spawnedEnemies.Count, Allocator.TempJob);
         var moveSpeedArray = new NativeArray<float>(spawnedEnemies.Count, Allocator.TempJob);
-        var rotationArray = new NativeArray<float>(spawnedEnemies.Count, Allocator.TempJob);
+        var targetDirectionArray = new NativeArray<float2>(spawnedEnemies.Count, Allocator.TempJob);
+        var angleArray = new NativeArray<float>(spawnedEnemies.Count, Allocator.TempJob);
 
         for (int i = 0; i < spawnedEnemies.Count; i++)
         {
             positionArray[i] = spawnedEnemies[i].transform.position;
             moveDirectionArray[i] = spawnedEnemies[i].transform.right;
             moveSpeedArray[i] = spawnedEnemies[i].CurrentSpeed;
-            rotationArray[i] = spawnedEnemies[i].transform.rotation.eulerAngles.z;
+            targetDirectionArray[i] = spawnedEnemies[i].TargetLookDirection;
         }
 
         var job = new EnemyMoveJob
@@ -101,7 +103,9 @@ public class EnemySpawner : MonoBehaviour
             PositionsArray = positionArray,
             MoveDirectionArray = moveDirectionArray,
             MoveSpeedArray = moveSpeedArray,
-            RotationArray = rotationArray,
+            TargetDirectionArray = targetDirectionArray,
+            AngleArray = angleArray,
+            RotationSpeed = spawnedEnemies[0].RotationSpeed,
             DeltaTime = Time.deltaTime
         };
 
@@ -110,28 +114,34 @@ public class EnemySpawner : MonoBehaviour
 
         for (int i = 0; i < spawnedEnemies.Count; i++)
         {
-            spawnedEnemies[i].transform.SetPositionAndRotation(positionArray[i], Quaternion.Euler(0, 0, rotationArray[i]));
+            spawnedEnemies[i].transform.SetPositionAndRotation(positionArray[i], Quaternion.Euler(0, 0, angleArray[i]));
         }
 
         positionArray.Dispose();
         moveDirectionArray.Dispose();
         moveSpeedArray.Dispose();
-        rotationArray.Dispose();
+        targetDirectionArray.Dispose();
+        angleArray.Dispose();
     }
 
+    [BurstCompile]
     struct EnemyMoveJob : IJobParallelFor
     {
         public NativeArray<float3> PositionsArray;
         public NativeArray<float3> MoveDirectionArray;
         public NativeArray<float> MoveSpeedArray;
-        public NativeArray<float> RotationArray;
+        public NativeArray<float2> TargetDirectionArray;
+        public NativeArray<float> AngleArray;
 
-        public float RotationSpeed;
         public float DeltaTime;
+        public float RotationSpeed;
 
         public void Execute(int index)
         {
             PositionsArray[index] += MoveSpeedArray[index] * DeltaTime * MoveDirectionArray[index];
+            var targetAngle = math.degrees(math.atan2(TargetDirectionArray[index].y, TargetDirectionArray[index].x));
+            var currentAngle = math.degrees(math.atan2(MoveDirectionArray[index].y, MoveDirectionArray[index].x));
+            AngleArray[index] = math.lerp(currentAngle, targetAngle, DeltaTime * RotationSpeed);
         }
     }
 }

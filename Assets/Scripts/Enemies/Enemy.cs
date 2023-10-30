@@ -12,6 +12,7 @@ public class Enemy : MonoBehaviour, IDamagable
     [SerializeField] protected float MaxSpeed;
     [SerializeField] float acceleration;
     [SerializeField] float rotationSpeed;
+    public float RotationSpeed => rotationSpeed;
     [SerializeField] TrailRenderer trail;
 
     [Header("Combat")]
@@ -22,7 +23,6 @@ public class Enemy : MonoBehaviour, IDamagable
     [SerializeField] Transform shootPoint;
     [SerializeField] int collisionDamage;
     float attackTimer;
-
 
     float targetSpeed;
     protected float TargetSpeed
@@ -36,7 +36,7 @@ public class Enemy : MonoBehaviour, IDamagable
 
     Vector2 targetLookDirection;
 
-    protected Vector2 TargetLookDirection
+    public Vector2 TargetLookDirection
     {
         get => targetLookDirection;
         set => targetLookDirection = value.normalized;
@@ -69,14 +69,14 @@ public class Enemy : MonoBehaviour, IDamagable
 
     void UpdateRotation()
     {
+        if (Vector2.Distance(transform.position, PlayerTransform.position) > 10) return;
+        Shoot();
+        return;
         var targetAngle = Mathf.Atan2(TargetLookDirection.y, TargetLookDirection.x) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0, 0, targetAngle), Time.deltaTime * rotationSpeed);
         var currentAngle = Mathf.Atan2(transform.right.y, transform.right.x) * Mathf.Rad2Deg;
 
         if (!(Mathf.Abs(targetAngle - currentAngle) < 60)) return;
-        if (Vector2.Distance(transform.position, PlayerTransform.position) > 10) return;
 
-        Shoot();
     }
 
     public void Damage(int damage)
