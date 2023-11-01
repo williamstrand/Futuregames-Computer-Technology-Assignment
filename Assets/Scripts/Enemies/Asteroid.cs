@@ -23,6 +23,8 @@ public class Asteroid : MonoBehaviour, IDamagable
     public Vector3 MoveDirection => moveDirection;
     int rotationDirection;
 
+    public bool IsEnabled { get; set; }
+
     [SerializeField] float lifeTime = 10f;
     float lifeTimer;
 
