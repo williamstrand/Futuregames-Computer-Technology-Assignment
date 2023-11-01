@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Jobs;
 using Random = UnityEngine.Random;
 
 public class EnemySpawner : MonoBehaviour
@@ -20,16 +21,44 @@ public class EnemySpawner : MonoBehaviour
     List<Enemy> spawnedEnemies = new List<Enemy>();
     List<Enemy> enemyPool = new List<Enemy>();
 
+    JobHandle jobHandle;
+
     float spawnTimer;
+    Enemy[] allEnemies;
+    TransformAccessArray enemyTransforms;
+
+    NativeArray<Vector3> moveDirectionArray;
+    NativeArray<float> moveSpeedArray;
+    NativeArray<float2> targetDirectionArray;
 
     void Start()
     {
+        allEnemies = new Enemy[PoolSize];
+        var array = new Transform[PoolSize];
         spawnTimer = spawnInterval;
         for (int i = 0; i < PoolSize; i++)
         {
             var enemy = Instantiate(enemyPrefab, transform);
+            allEnemies[i] = enemy;
+            array[i] = enemy.transform;
             DisableEnemy(enemy);
         }
+
+        enemyTransforms = new TransformAccessArray(array);
+    }
+
+    void OnEnable()
+    {
+        moveDirectionArray = new NativeArray<Vector3>(PoolSize, Allocator.TempJob);
+        moveSpeedArray = new NativeArray<float>(PoolSize, Allocator.TempJob);
+        targetDirectionArray = new NativeArray<float2>(PoolSize, Allocator.TempJob);
+    }
+
+    void OnDisable()
+    {
+        moveDirectionArray.Dispose();
+        moveSpeedArray.Dispose();
+        targetDirectionArray.Dispose();
     }
 
     void Update()
@@ -82,68 +111,47 @@ public class EnemySpawner : MonoBehaviour
 
     void UpdateEnemyPositions()
     {
-        if (spawnedEnemies.Count <= 0) return;
-
-        var positionArray = new NativeArray<float3>(spawnedEnemies.Count, Allocator.TempJob);
-        var moveDirectionArray = new NativeArray<float3>(spawnedEnemies.Count, Allocator.TempJob);
-        var moveSpeedArray = new NativeArray<float>(spawnedEnemies.Count, Allocator.TempJob);
-        var targetDirectionArray = new NativeArray<float2>(spawnedEnemies.Count, Allocator.TempJob);
-        var rotationArray = new NativeArray<quaternion>(spawnedEnemies.Count, Allocator.TempJob);
-
         for (int i = 0; i < spawnedEnemies.Count; i++)
         {
-            positionArray[i] = spawnedEnemies[i].transform.position;
-            moveDirectionArray[i] = spawnedEnemies[i].transform.right;
-            moveSpeedArray[i] = spawnedEnemies[i].CurrentSpeed;
-            targetDirectionArray[i] = spawnedEnemies[i].TargetLookDirection;
+            moveDirectionArray[i] = allEnemies[i].transform.right;
+            moveSpeedArray[i] = allEnemies[i].CurrentSpeed;
+            targetDirectionArray[i] = allEnemies[i].TargetLookDirection;
         }
 
         var job = new EnemyMoveJob
         {
-            PositionsArray = positionArray,
             MoveDirectionArray = moveDirectionArray,
             MoveSpeedArray = moveSpeedArray,
             TargetDirectionArray = targetDirectionArray,
-            RotationArray = rotationArray,
-            RotationSpeed = spawnedEnemies[0].RotationSpeed,
+            RotationSpeed = allEnemies[0].RotationSpeed,
             DeltaTime = Time.deltaTime
         };
 
-        var jobHandle = job.Schedule(spawnedEnemies.Count, 100);
+        jobHandle = job.Schedule(enemyTransforms);
+    }
+
+    void LateUpdate()
+    {
         jobHandle.Complete();
-
-        for (int i = 0; i < spawnedEnemies.Count; i++)
-        {
-            spawnedEnemies[i].transform.SetPositionAndRotation(positionArray[i], rotationArray[i]);
-        }
-
-        positionArray.Dispose();
-        moveDirectionArray.Dispose();
-        moveSpeedArray.Dispose();
-        targetDirectionArray.Dispose();
-        rotationArray.Dispose();
     }
 
     [BurstCompile]
-    struct EnemyMoveJob : IJobParallelFor
+    struct EnemyMoveJob : IJobParallelForTransform
     {
-        public NativeArray<float3> PositionsArray;
-        public NativeArray<float3> MoveDirectionArray;
+        public NativeArray<Vector3> MoveDirectionArray;
         public NativeArray<float> MoveSpeedArray;
         public NativeArray<float2> TargetDirectionArray;
-        public NativeArray<quaternion> RotationArray;
 
         public float DeltaTime;
         public float RotationSpeed;
 
-        public void Execute(int index)
+        public void Execute(int index, TransformAccess transform)
         {
-            PositionsArray[index] += MoveSpeedArray[index] * DeltaTime * MoveDirectionArray[index];
+            transform.position += MoveSpeedArray[index] * DeltaTime * MoveDirectionArray[index];
             var targetAngle = math.atan2(TargetDirectionArray[index].y, TargetDirectionArray[index].x);
             var currentAngle = math.atan2(MoveDirectionArray[index].y, MoveDirectionArray[index].x);
             var angle = math.lerp(currentAngle, targetAngle, DeltaTime * RotationSpeed);
-            RotationArray[index] = quaternion.EulerXYZ(0, 0, angle);
-
+            transform.rotation = quaternion.EulerXYZ(0, 0, angle);
         }
     }
 }
