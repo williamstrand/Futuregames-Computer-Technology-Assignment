@@ -24,8 +24,6 @@ public class AsteroidSpawner : MonoBehaviour
     List<Asteroid> spawnedAsteroids = new List<Asteroid>();
     List<Asteroid> asteroidPool = new List<Asteroid>();
 
-    NativeArray<Vector3> positionArray;
-    NativeArray<Quaternion> rotationArray;
     NativeArray<Vector3> moveDirectionArray;
     NativeArray<float> moveSpeedArray;
     NativeArray<bool> isEnabledArray;
@@ -51,8 +49,6 @@ public class AsteroidSpawner : MonoBehaviour
 
     void OnEnable()
     {
-        positionArray = new NativeArray<Vector3>(PoolSize, Allocator.TempJob);
-        rotationArray = new NativeArray<Quaternion>(PoolSize, Allocator.TempJob);
         moveDirectionArray = new NativeArray<Vector3>(PoolSize, Allocator.TempJob);
         moveSpeedArray = new NativeArray<float>(PoolSize, Allocator.TempJob);
         isEnabledArray = new NativeArray<bool>(PoolSize, Allocator.TempJob);
@@ -60,8 +56,6 @@ public class AsteroidSpawner : MonoBehaviour
 
     void OnDisable()
     {
-        positionArray.Dispose();
-        rotationArray.Dispose();
         moveDirectionArray.Dispose();
         moveSpeedArray.Dispose();
         isEnabledArray.Dispose();
@@ -133,8 +127,6 @@ public class AsteroidSpawner : MonoBehaviour
 
         var calculateMovementJob = new AsteroidCalculateMovementJob
         {
-            PositionArray = positionArray,
-            RotationArray = rotationArray,
             MoveDirectionArray = moveDirectionArray,
             MoveSpeedArray = moveSpeedArray,
             IsEnabledArray = isEnabledArray,
@@ -154,8 +146,6 @@ public class AsteroidSpawner : MonoBehaviour
     [BurstCompile]
     struct AsteroidCalculateMovementJob : IJobParallelForTransform
     {
-        public NativeArray<Vector3> PositionArray;
-        public NativeArray<Quaternion> RotationArray;
         [ReadOnly] public NativeArray<Vector3> MoveDirectionArray;
         [ReadOnly] public NativeArray<float> MoveSpeedArray;
         [ReadOnly] public NativeArray<bool> IsEnabledArray;
@@ -166,8 +156,6 @@ public class AsteroidSpawner : MonoBehaviour
         public void Execute(int index, TransformAccess transform)
         {
             if (!IsEnabledArray[index]) return;
-            PositionArray[index] = transform.position;
-            RotationArray[index] = transform.rotation;
 
             transform.position += MoveSpeedArray[index] * DeltaTime * MoveDirectionArray[index];
             transform.rotation *= quaternion.EulerXYZ(0, 0, RotationSpeed * DeltaTime * Mathf.Deg2Rad);
