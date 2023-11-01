@@ -88,7 +88,7 @@ public class EnemySpawner : MonoBehaviour
         var moveDirectionArray = new NativeArray<float3>(spawnedEnemies.Count, Allocator.TempJob);
         var moveSpeedArray = new NativeArray<float>(spawnedEnemies.Count, Allocator.TempJob);
         var targetDirectionArray = new NativeArray<float2>(spawnedEnemies.Count, Allocator.TempJob);
-        var angleArray = new NativeArray<float>(spawnedEnemies.Count, Allocator.TempJob);
+        var rotationArray = new NativeArray<quaternion>(spawnedEnemies.Count, Allocator.TempJob);
 
         for (int i = 0; i < spawnedEnemies.Count; i++)
         {
@@ -104,7 +104,7 @@ public class EnemySpawner : MonoBehaviour
             MoveDirectionArray = moveDirectionArray,
             MoveSpeedArray = moveSpeedArray,
             TargetDirectionArray = targetDirectionArray,
-            AngleArray = angleArray,
+            RotationArray = rotationArray,
             RotationSpeed = spawnedEnemies[0].RotationSpeed,
             DeltaTime = Time.deltaTime
         };
@@ -114,14 +114,14 @@ public class EnemySpawner : MonoBehaviour
 
         for (int i = 0; i < spawnedEnemies.Count; i++)
         {
-            spawnedEnemies[i].transform.SetPositionAndRotation(positionArray[i], Quaternion.Euler(0, 0, angleArray[i]));
+            spawnedEnemies[i].transform.SetPositionAndRotation(positionArray[i], rotationArray[i]);
         }
 
         positionArray.Dispose();
         moveDirectionArray.Dispose();
         moveSpeedArray.Dispose();
         targetDirectionArray.Dispose();
-        angleArray.Dispose();
+        rotationArray.Dispose();
     }
 
     [BurstCompile]
@@ -131,7 +131,7 @@ public class EnemySpawner : MonoBehaviour
         public NativeArray<float3> MoveDirectionArray;
         public NativeArray<float> MoveSpeedArray;
         public NativeArray<float2> TargetDirectionArray;
-        public NativeArray<float> AngleArray;
+        public NativeArray<quaternion> RotationArray;
 
         public float DeltaTime;
         public float RotationSpeed;
@@ -139,9 +139,11 @@ public class EnemySpawner : MonoBehaviour
         public void Execute(int index)
         {
             PositionsArray[index] += MoveSpeedArray[index] * DeltaTime * MoveDirectionArray[index];
-            var targetAngle = math.degrees(math.atan2(TargetDirectionArray[index].y, TargetDirectionArray[index].x));
-            var currentAngle = math.degrees(math.atan2(MoveDirectionArray[index].y, MoveDirectionArray[index].x));
-            AngleArray[index] = math.lerp(currentAngle, targetAngle, DeltaTime * RotationSpeed);
+            var targetAngle = math.atan2(TargetDirectionArray[index].y, TargetDirectionArray[index].x);
+            var currentAngle = math.atan2(MoveDirectionArray[index].y, MoveDirectionArray[index].x);
+            var angle = math.lerp(currentAngle, targetAngle, DeltaTime * RotationSpeed);
+            RotationArray[index] = quaternion.EulerXYZ(0, 0, angle);
+
         }
     }
 }
